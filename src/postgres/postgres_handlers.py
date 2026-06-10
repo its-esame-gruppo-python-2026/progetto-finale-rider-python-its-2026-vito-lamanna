@@ -205,13 +205,6 @@ def controllo_id_rider_in_db(rider_id):
                     WHERE id = %s
                 """, (rider_id,))
 
-        # query = """
-        #     SELECT id, name, vehicle, total_deliveries,
-        #     FROM riders
-        #     WHERE id = %s
-        # """
-
-        #cursore.execute(query, (rider_id,))
         risultato = cursore.fetchone()
         cursore.close()
         if risultato:
@@ -241,6 +234,52 @@ def inserisci_recensione_db(rider_id, customer_name, rating, comment):
         conn_db.commit()
         cursore.close()
         return id_generato
+    except (Exception, psycopg2.DatabaseError) as e:
+        raise Exception(f"Errore database: {e}")
+    finally:
+        if conn_db is not None:
+            conn_db.close()
+
+def aggiorna_recensione_db(id_review, comment):
+    conn_db = None
+    try:
+        conn_db = connessione_db()
+        cursore = conn_db.cursor()
+
+        query = """
+            UPDATE reviews 
+            SET comment = %s
+            WHERE id = %s
+        """
+
+        cursore.execute(query, (comment, id_review))
+        conn_db.commit()
+        cursore.close()
+        return id_review
+    except (Exception, psycopg2.DatabaseError) as e:
+        raise Exception(f"Errore database: {e}")
+    finally:
+        if conn_db is not None:
+            conn_db.close()
+
+def controllo_id_review_in_db(id_review):
+    conn_db = None
+    try:
+        conn_db = connessione_db()
+        cursore = conn_db.cursor()
+
+        cursore.execute("""
+                    SELECT id, rating, comment
+                    FROM reviews
+                    WHERE id = %s
+                """, (id_review,))
+
+        risultato = cursore.fetchone()
+        cursore.close()
+        if risultato:
+            return True
+        else:
+            return False
     except (Exception, psycopg2.DatabaseError) as e:
         raise Exception(f"Errore database: {e}")
     finally:

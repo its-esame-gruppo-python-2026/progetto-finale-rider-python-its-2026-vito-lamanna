@@ -172,9 +172,15 @@ def media_voti_rider_handlers(rider_id):
             }, 404
         
         media = media_voti_rider_db(rider_id)
-        return {
-            "rider_id": rider_id,
-            "media_voti": media
-        }, 200
+        if media is None:
+            return {
+                "rider_id": rider_id,
+                "messaggio": "Il rider non ha recensioni"
+            }, 200
+        else:
+            return {
+                "rider_id": rider_id,
+                "media_voti": media
+            }, 200
     except Exception as e:
         return {"Errore Server nell'handler": str(e)}, 500

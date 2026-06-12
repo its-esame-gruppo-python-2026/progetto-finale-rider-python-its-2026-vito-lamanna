@@ -398,7 +398,11 @@ async function submitUpdateReview() {
 async function fetchMediaVoti(id, name) {
   try {
     const data = await apiFetch(API.mediaVoti(id));
-    showToast(`Media voti per ${name}: ⭐ ${data.media_voti}`, 'info');
+    if (data.messaggio) {
+      showToast(`${name}: ${data.messaggio}`, 'info');
+    } else {
+      showToast(`Media voti per ${name}: ⭐ ${data.media_voti}`, 'info');
+    }
   } catch (err) {
     showToast(`Errore: ${err.message}`, 'error');
   }

@@ -132,7 +132,7 @@ def media_voti_rider_db(rider_id):
         cursore = conn_db.cursor()
 
         query = """
-            SELECT COALESCE(ROUND(AVG(rating), 1), 0.0)
+            SELECT ROUND(AVG(rating), 1)
             FROM reviews
             WHERE rider_id = %s;
         """
@@ -140,7 +140,7 @@ def media_voti_rider_db(rider_id):
         cursore.execute(query, (rider_id,))
         risultato = cursore.fetchone()
         cursore.close()
-        return risultato[0] if risultato else 0.0
+        return float(risultato[0]) if risultato and risultato[0] is not None else None
     except (Exception, psycopg2.DatabaseError) as e:
         raise Exception(f"Errore database: {e}")
     finally:

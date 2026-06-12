@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="it" style="color-scheme: dark;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Riders Dashboard</title>
+  <meta name="description" content="Dashboard premium per la gestione dei riders — visualizza, aggiungi, elimina e valuta i tuoi fattorini.">
+
+  <!-- Preconnect per Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     APP SHELL
+════════════════════════════════════════════════════════ -->
+<div class="app-shell">
+
+  <!-- ── Sidebar ─────────────────────────────────────────── -->
+  <aside class="sidebar" role="navigation" aria-label="Menu principale">
+    <div class="sidebar-logo">
+      <div class="logo-icon" aria-hidden="true">🏍️</div>
+      <h1>Riders<span>Dashboard</span></h1>
+    </div>
+
+    <nav>
+      <button class="nav-item active" data-section="dashboard" id="nav-dashboard" aria-current="page">
+        <span class="nav-icon" aria-hidden="true">📊</span>
+        Dashboard
+      </button>
+      <button class="nav-item" data-section="riders" id="nav-riders">
+        <span class="nav-icon" aria-hidden="true">🏍️</span>
+        Riders
+        <span class="nav-badge" id="riders-badge">…</span>
+      </button>
+      <button class="nav-item" data-section="reviews" id="nav-reviews">
+        <span class="nav-icon" aria-hidden="true">⭐</span>
+        Recensioni
+      </button>
+    </nav>
+  </aside>
+
+  <!-- ── Header ──────────────────────────────────────────── -->
+  <header class="header">
+    <div>
+      <div class="header-title" id="header-title">Dashboard</div>
+      <div class="header-subtitle" id="header-sub">Panoramica generale</div>
+    </div>
+    <div class="header-actions">
+      <div class="status-dot" id="status-indicator">API Online</div>
+    </div>
+  </header>
+
+  <!-- ── Main ────────────────────────────────────────────── -->
+  <main class="main" id="main-content" role="main">
+    <div class="loading"><div class="spinner"></div> Caricamento...</div>
+  </main>
+
+</div><!-- /app-shell -->
+
+
+<!-- ═══════════════════════════════════════════════════════
+     DIALOGS
+════════════════════════════════════════════════════════ -->
+
+<!-- Dialog: Aggiungi Rider -->
+<dialog id="dialog-add-rider" aria-labelledby="dialog-add-title">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="dialog-add-title">➕ Nuovo Rider</h2>
+    <button class="dialog-close" onclick="document.getElementById('dialog-add-rider').close()"
+            aria-label="Chiudi">✕</button>
+  </div>
+
+  <div class="dialog-body">
+    <form id="form-add-rider" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="input-name">Nome *</label>
+        <input class="form-control" type="text" id="input-name"
+               placeholder="Es. Marco Rossi" required autocomplete="name">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-vehicle">Veicolo *</label>
+        <select class="form-control" id="input-vehicle" required>
+          <option value="" disabled selected>Seleziona un veicolo...</option>
+          <option value="auto">🚗 Auto</option>
+          <option value="moto">🏍️ Moto</option>
+          <option value="scooter">🛵 Scooter</option>
+          <option value="bicicletta">🚲 Bicicletta</option>
+          <option value="furgone">🚐 Furgone</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-deliveries">Consegne Totali</label>
+        <input class="form-control" type="number" id="input-deliveries"
+               placeholder="0" min="0" value="0">
+      </div>
+    </form>
+  </div>
+
+  <div class="dialog-footer">
+    <button class="btn btn-secondary"
+            onclick="document.getElementById('dialog-add-rider').close()">Annulla</button>
+    <button class="btn btn-primary" id="btn-submit-rider" onclick="submitAddRider()">
+      ➕ Aggiungi Rider
+    </button>
+  </div>
+</dialog>
+
+
+<!-- Dialog: Conferma eliminazione -->
+<dialog id="dialog-confirm" aria-labelledby="dialog-confirm-title">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="dialog-confirm-title">Conferma eliminazione</h2>
+    <button class="dialog-close" onclick="document.getElementById('dialog-confirm').close()"
+            aria-label="Chiudi">✕</button>
+  </div>
+
+  <div class="dialog-body">
+    <span class="confirm-icon" aria-hidden="true">🗑️</span>
+    <p class="confirm-text">Sei sicuro di voler eliminare questo rider?</p>
+  </div>
+
+  <div class="dialog-footer">
+    <button class="btn btn-secondary" id="btn-confirm-cancel">Annulla</button>
+    <button class="btn btn-danger" id="btn-confirm-ok">Elimina</button>
+  </div>
+</dialog>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     TOAST CONTAINER
+════════════════════════════════════════════════════════ -->
+<div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     SCRIPTS
+════════════════════════════════════════════════════════ -->
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+
+</body>
+</html>

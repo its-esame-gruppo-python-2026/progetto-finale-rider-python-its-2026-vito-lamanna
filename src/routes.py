@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 from werkzeug.exceptions import BadRequest  #per riconoscere errori legati alle richieste HTTP (come BadRequest)
 from src.handlers.riders_handlers import inserisci_rider_handlers, list_rider_handlers, inserisci_recensione_handlers, aggiorna_recensione_handlers, delete_rider_handlers
 

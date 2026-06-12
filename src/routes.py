@@ -1,6 +1,13 @@
 from flask import Blueprint, request, jsonify, render_template
 from werkzeug.exceptions import BadRequest  #per riconoscere errori legati alle richieste HTTP (come BadRequest)
-from src.handlers.riders_handlers import inserisci_rider_handlers, list_rider_handlers, inserisci_recensione_handlers, aggiorna_recensione_handlers, delete_rider_handlers
+from src.handlers.riders_handlers import (
+    inserisci_rider_handlers, 
+    list_rider_handlers, 
+    inserisci_recensione_handlers, 
+    aggiorna_recensione_handlers, 
+    delete_rider_handlers,
+    media_voti_rider_handlers
+)
 
 riders_bp = Blueprint("riders", __name__, url_prefix="/riders")
 
@@ -78,6 +85,14 @@ def update_review():
 def delete_rider(rider_id):
     try:
         risposta_json, codice_http = delete_rider_handlers(rider_id)
+        return jsonify(risposta_json), codice_http
+    except Exception as e:
+        return jsonify({"Errore Server": str(e)}), 500
+
+@riders_bp.route('/media_voti/<int:rider_id>', methods=['GET'])
+def get_media_voti(rider_id):
+    try:
+        risposta_json, codice_http = media_voti_rider_handlers(rider_id)
         return jsonify(risposta_json), codice_http
     except Exception as e:
         return jsonify({"Errore Server": str(e)}), 500

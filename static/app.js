@@ -9,12 +9,13 @@ const API = {
   deleteRider:   (id) => `/riders/delete_rider/${id}`,
   insertReview:  () => `/riders/insert_review`,
   updateReview:  () => `/riders/update_review`,
+  mediaVoti:     (id) => `/riders/media_voti/${id}`,
 };
 
 // ── State ─────────────────────────────────────────────────
 const state = {
   riders: [],
-  currentSection: 'dashboard',
+  currentSection: 'riders',
   currentFilter: '',
   totalRiders: 0,
 };
@@ -54,11 +55,6 @@ function renderSection(section) {
   const headerSub   = document.getElementById('header-sub');
 
   switch (section) {
-    case 'dashboard':
-      headerTitle.textContent = 'Dashboard';
-      headerSub.textContent = 'Panoramica generale';
-      renderDashboard(main);
-      break;
     case 'riders':
       headerTitle.textContent = 'Riders';
       headerSub.textContent = 'Gestione e filtraggio';
@@ -81,92 +77,6 @@ async function apiFetch(url, options = {}) {
   const data = await res.json();
   if (!res.ok) throw new Error(data?.Errore || data?.['Errore validazione dati'] || JSON.stringify(data));
   return data;
-}
-
-// ── Dashboard ─────────────────────────────────────────────
-async function renderDashboard(container) {
-  container.innerHTML = `<div class="loading"><div class="spinner"></div> Caricamento dati...</div>`;
-
-  try {
-    const data = await apiFetch(API.listRiders());
-    const riders = data.Risultati || [];
-    state.riders = riders;
-
-    const totalRiders = riders.length;
-    const avgRating   = riders.length
-      ? (riders.reduce((sum, r) => sum + (r.rating_average || 0), 0) / riders.length).toFixed(1)
-      : '—';
-    const totalDeliveries = riders.reduce((sum, r) => sum + (r.total_deliveries || 0), 0);
-    const topRider = riders.sort((a, b) => b.rating_average - a.rating_average)[0];
-
-    // Distribuzione veicoli
-    const vehicles = {};
-    riders.forEach(r => { vehicles[r.vehicle] = (vehicles[r.vehicle] || 0) + 1; });
-    const maxV = Math.max(...Object.values(vehicles), 1);
-
-    const vehicleIcons = { auto: '🚗', moto: '🏍️', scooter: '🛵', bicicletta: '🚲', furgone: '🚐' };
-
-    container.innerHTML = `
-      <div class="stats-grid">
-        <div class="stat-card purple">
-          <div class="stat-label">Riders Totali</div>
-          <div class="stat-value">${totalRiders}</div>
-          <div class="stat-desc">nel sistema</div>
-        </div>
-        <div class="stat-card teal">
-          <div class="stat-label">Rating Medio</div>
-          <div class="stat-value">${avgRating}</div>
-          <div class="stat-desc">⭐ su 5</div>
-        </div>
-        <div class="stat-card gold">
-          <div class="stat-label">Consegne Totali</div>
-          <div class="stat-value">${totalDeliveries}</div>
-          <div class="stat-desc">consegne registrate</div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-label">Miglior Rider</div>
-          <div class="stat-value" style="font-size:22px">${topRider ? topRider.name : '—'}</div>
-          <div class="stat-desc">${topRider ? `⭐ ${topRider.rating_average} rating` : ''}</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="section-header">
-          <div>
-            <div class="section-title">Distribuzione Veicoli</div>
-            <div class="section-subtitle">Breakdown per tipo di mezzo</div>
-          </div>
-        </div>
-        <div class="bar-chart">
-          ${Object.entries(vehicles).map(([v, count]) => `
-            <div class="bar-row">
-              <div class="bar-label">${vehicleIcons[v] || ''} ${v}</div>
-              <div class="bar-track">
-                <div class="bar-fill ${v}" data-width="${Math.round(count / maxV * 100)}"></div>
-              </div>
-              <div class="bar-count">${count}</div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-
-    // Anima le barre dopo il render
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        document.querySelectorAll('.bar-fill').forEach(bar => {
-          bar.style.width = bar.dataset.width + '%';
-        });
-      });
-    });
-
-  } catch (err) {
-    container.innerHTML = `<div class="empty-state">
-      <div class="empty-state-icon">⚠️</div>
-      <div class="empty-state-title">Errore caricamento</div>
-      <p>${err.message}</p>
-    </div>`;
-  }
 }
 
 // ── Riders ────────────────────────────────────────────────
@@ -242,6 +152,11 @@ async function loadRidersGrid(gridEl) {
     gridEl.querySelectorAll('.btn-delete-rider').forEach(btn => {
       btn.addEventListener('click', () => confirmDeleteRider(btn.dataset.id, btn.dataset.name, gridEl));
     });
+    
+    // Attach media voti buttons
+    gridEl.querySelectorAll('.btn-media-voti').forEach(btn => {
+      btn.addEventListener('click', () => fetchMediaVoti(btn.dataset.id, btn.dataset.name));
+    });
 
   } catch (err) {
     gridEl.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
@@ -285,7 +200,9 @@ function buildRiderCard(r) {
       </div>
 
       <div class="rider-card-footer">
-        <div class="stars">${stars}</div>
+        <button class="btn btn-secondary btn-sm btn-media-voti" data-id="${r.id}" data-name="${r.name}">
+          📊 Media Voti
+        </button>
         <button class="btn btn-danger btn-sm btn-delete-rider"
                 data-id="${r.id}" data-name="${r.name}">🗑 Elimina</button>
       </div>
@@ -478,6 +395,15 @@ async function submitUpdateReview() {
   }
 }
 
+async function fetchMediaVoti(id, name) {
+  try {
+    const data = await apiFetch(API.mediaVoti(id));
+    showToast(`Media voti per ${name}: ⭐ ${data.media_voti}`, 'info');
+  } catch (err) {
+    showToast(`Errore: ${err.message}`, 'error');
+  }
+}
+
 // ── Init ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   // Nav click
@@ -502,5 +428,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Render initial section
-  renderSection('dashboard');
+  renderSection('riders');
 });

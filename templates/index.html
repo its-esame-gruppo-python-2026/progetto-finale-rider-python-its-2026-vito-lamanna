@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Riders Dashboard</title>
   <meta name="description" content="Dashboard premium per la gestione dei riders — visualizza, aggiungi, elimina e valuta i tuoi fattorini.">
-
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <!-- Preconnect per Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,7 +21,7 @@
   <!-- ── Sidebar ─────────────────────────────────────────── -->
   <aside class="sidebar" role="navigation" aria-label="Menu principale">
     <div class="sidebar-logo">
-      <div class="logo-icon" aria-hidden="true">🏍️</div>
+      <img src="{{ url_for('static', filename='favicon.png') }}" alt="Logo" class="logo-img" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">
       <h1>Riders<span>Dashboard</span></h1>
     </div>
 
@@ -31,10 +31,7 @@
         Riders
         <span class="nav-badge" id="riders-badge">…</span>
       </button>
-      <button class="nav-item" data-section="reviews" id="nav-reviews">
-        <span class="nav-icon" aria-hidden="true">⭐</span>
-        Recensioni
-      </button>
+
     </nav>
   </aside>
 
@@ -74,12 +71,12 @@
       <div class="form-group">
         <label class="form-label" for="input-name">Nome *</label>
         <input class="form-control" type="text" id="input-name"
-               placeholder="Es. Marco Rossi" required autocomplete="name">
+               placeholder="Es. Marco Rossi" autocomplete="name">
       </div>
 
       <div class="form-group">
         <label class="form-label" for="input-vehicle">Veicolo *</label>
-        <select class="form-control" id="input-vehicle" required>
+        <select class="form-control" id="input-vehicle">
           <option value="" disabled selected>Seleziona un veicolo...</option>
           <option value="auto">🚗 Auto</option>
           <option value="moto">🏍️ Moto</option>
@@ -127,11 +124,81 @@
 </dialog>
 
 
+<!-- Dialog: Aggiungi Recensione -->
+<dialog id="dialog-add-review" aria-labelledby="dialog-review-title">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="dialog-review-title">⭐ Nuova Recensione</h2>
+    <button class="dialog-close" onclick="document.getElementById('dialog-add-review').close()"
+            aria-label="Chiudi">✕</button>
+  </div>
+
+  <div class="dialog-body">
+    <p class="review-subtitle" id="dialog-review-subtitle" style="margin-bottom:15px;color:var(--text-2);font-weight:500;">Stai recensendo il rider</p>
+    <form id="form-add-review" novalidate>
+      <input type="hidden" id="modal-rev-rider-id">
+      <div class="form-group">
+        <label class="form-label" for="modal-rev-customer">Nome Cliente *</label>
+        <input class="form-control" type="text" id="modal-rev-customer"
+               placeholder="Es. Mario Rossi">
+      </div>
+
+      <div class="form-group">
+        <span class="stars-label">Valutazione *</span>
+        <div class="stars stars-input" id="modal-stars-input">
+          <input type="radio" name="modal-rating" id="mstar-5" value="5">
+          <label for="mstar-5" title="5 stelle">★</label>
+          <input type="radio" name="modal-rating" id="mstar-4" value="4">
+          <label for="mstar-4" title="4 stelle">★</label>
+          <input type="radio" name="modal-rating" id="mstar-3" value="3">
+          <label for="mstar-3" title="3 stelle">★</label>
+          <input type="radio" name="modal-rating" id="mstar-2" value="2">
+          <label for="mstar-2" title="2 stelle">★</label>
+          <input type="radio" name="modal-rating" id="mstar-1" value="1">
+          <label for="mstar-1" title="1 stella">★</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="modal-rev-comment">Commento (opzionale)</label>
+        <textarea class="form-control" id="modal-rev-comment"
+                  placeholder="Scrivi un commento sulla consegna..."></textarea>
+      </div>
+    </form>
+  </div>
+
+  <div class="dialog-footer">
+    <button class="btn btn-secondary"
+            onclick="document.getElementById('dialog-add-review').close()">Annulla</button>
+    <button class="btn btn-primary" id="btn-submit-modal-review" onclick="submitModalReview()">
+      ✉️ Invia Recensione
+    </button>
+  </div>
+</dialog>
+
+
 <!-- ═══════════════════════════════════════════════════════
      TOAST CONTAINER
 ════════════════════════════════════════════════════════ -->
 <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
 
+
+<!-- ═══════════════════════════════════════════════════════
+     API MONITOR
+════════════════════════════════════════════════════════ -->
+<div id="api-monitor" class="api-monitor collapsed">
+  <div class="api-monitor-header" onclick="toggleApiMonitor()">
+    <div class="api-monitor-title">
+      <span class="api-icon">🔌</span> API Monitor
+    </div>
+    <div class="api-monitor-controls">
+      <button class="btn-api-clear" onclick="clearApiLogs(event)">Clear</button>
+      <span id="api-monitor-toggle-icon">▲</span>
+    </div>
+  </div>
+  <div class="api-monitor-body" id="api-logs-container">
+    <div class="api-log-empty">In attesa di richieste API...</div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════
      SCRIPTS

@@ -60,23 +60,76 @@ function renderSection(section) {
       headerSub.textContent = 'Gestione e filtraggio';
       renderRiders(main);
       break;
-    case 'reviews':
-      headerTitle.textContent = 'Recensioni';
-      headerSub.textContent = 'Aggiungi e modifica recensioni';
-      renderReviews(main);
-      break;
   }
 }
 
 // ── Fetch helpers ─────────────────────────────────────────
 async function apiFetch(url, options = {}) {
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.Errore || data?.['Errore validazione dati'] || JSON.stringify(data));
+  const method = options.method || 'GET';
+  let bodyData = null;
+  try { if (options.body) bodyData = JSON.parse(options.body); } catch (e) {}
+  
+  let res, data, isError = false;
+  
+  try {
+    res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      ...options,
+    });
+    data = await res.json();
+    if (!res.ok) isError = true;
+  } catch (e) {
+    isError = true;
+    data = { "Errore connessione": e.message };
+  }
+  
+  logToApiMonitor(method, url, bodyData, res ? res.status : 'ERR', data, isError);
+
+  if (isError) {
+    throw new Error(data?.Errore || data?.['Errore validazione dati'] || JSON.stringify(data));
+  }
+  
   return data;
+}
+
+// ── API Monitor ───────────────────────────────────────────
+function toggleApiMonitor() {
+  const monitor = document.getElementById('api-monitor');
+  if (monitor) monitor.classList.toggle('collapsed');
+}
+
+function clearApiLogs(event) {
+  event.stopPropagation();
+  const container = document.getElementById('api-logs-container');
+  if (container) {
+    container.innerHTML = '<div class="api-log-empty">In attesa di richieste API...</div>';
+  }
+}
+
+function logToApiMonitor(method, url, reqBody, status, resBody, isError) {
+  const container = document.getElementById('api-logs-container');
+  if (!container) return;
+  
+  const emptyMsg = container.querySelector('.api-log-empty');
+  if (emptyMsg) emptyMsg.remove();
+  
+  const entry = document.createElement('div');
+  entry.className = 'api-log-entry';
+  
+  const statusClass = isError ? 'error' : 'success';
+  const reqBodyHtml = reqBody ? `<div class="api-log-body">${JSON.stringify(reqBody, null, 2)}</div>` : '';
+  const resBodyHtml = resBody ? `<div class="api-log-body">${JSON.stringify(resBody, null, 2)}</div>` : '';
+  
+  entry.innerHTML = `
+    <div class="api-log-req">[${method}] ${url}</div>
+    ${reqBodyHtml}
+    <div class="api-log-res">
+      Status: <span class="api-log-status ${statusClass}">${status}</span>
+    </div>
+    ${resBodyHtml}
+  `;
+  
+  container.prepend(entry);
 }
 
 // ── Riders ────────────────────────────────────────────────
@@ -168,15 +221,17 @@ async function loadRidersGrid(gridEl) {
 
 function buildRiderCard(r) {
   const vehicleIcons = { auto: '🚗', moto: '🏍️', scooter: '🛵', bicicletta: '🚲', furgone: '🚐' };
-  const initial = r.name.charAt(0).toUpperCase();
   const stars = Array.from({ length: 5 }, (_, i) =>
     `<span class="star ${i < Math.round(r.rating_average) ? 'filled' : ''}">★</span>`
   ).join('');
 
+  const vehicleType = r.vehicle ? r.vehicle.toLowerCase() : 'moto';
+  const imgUrl = `/static/avatar_${vehicleType}.png`;
+
   return `
     <div class="rider-card">
       <div class="rider-card-header">
-        <div class="rider-avatar">${initial}</div>
+        <img src="${imgUrl}" alt="Avatar" class="rider-avatar" style="object-fit:cover; border: 2px solid var(--accent); padding: 2px;">
         <div>
           <div class="rider-name">${r.name}</div>
           <div class="rider-id">#${r.id}</div>
@@ -199,12 +254,16 @@ function buildRiderCard(r) {
         </div>
       </div>
 
-      <div class="rider-card-footer">
-        <button class="btn btn-secondary btn-sm btn-media-voti" data-id="${r.id}" data-name="${r.name}">
+      <div class="rider-card-footer" style="flex-wrap: wrap; gap: 8px;">
+        <button class="btn btn-primary btn-sm" onclick="openAddReviewModal(${r.id}, '${r.name.replace(/'/g, "\\'")}')" style="width:100%; justify-content:center; margin-bottom:4px;">
+          ⭐ Lascia Recensione
+        </button>
+        <button class="btn btn-secondary btn-sm btn-media-voti" data-id="${r.id}" data-name="${r.name}" style="flex:1; justify-content:center;">
           📊 Media Voti
         </button>
-        <button class="btn btn-danger btn-sm btn-delete-rider"
-                data-id="${r.id}" data-name="${r.name}">🗑 Elimina</button>
+        <button class="btn btn-danger btn-sm btn-delete-rider" data-id="${r.id}" data-name="${r.name}" style="flex:1; justify-content:center;">
+          🗑 Elimina
+        </button>
       </div>
     </div>
   `;
@@ -223,9 +282,9 @@ async function submitAddRider() {
   const vehicle = form.querySelector('#input-vehicle').value;
   const deliveries = parseInt(form.querySelector('#input-deliveries').value) || 0;
 
-  if (!name || !vehicle) { showToast('Nome e veicolo sono obbligatori', 'error'); return; }
 
-  const btn = form.querySelector('#btn-submit-rider');
+
+  const btn = document.getElementById('btn-submit-rider');
   btn.disabled = true;
   btn.textContent = 'Salvataggio...';
 
@@ -270,92 +329,24 @@ function confirmDeleteRider(id, name, gridEl) {
 }
 
 // ── Reviews ───────────────────────────────────────────────
-function renderReviews(container) {
-  container.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
 
-      <!-- Inserisci recensione -->
-      <div class="card">
-        <div class="section-header" style="margin-bottom:20px">
-          <div>
-            <div class="section-title">⭐ Nuova Recensione</div>
-            <div class="section-subtitle">Aggiungi una valutazione a un rider</div>
-          </div>
-        </div>
-
-        <form id="form-review" novalidate>
-          <div class="form-group">
-            <label class="form-label" for="rev-rider-id">ID Rider</label>
-            <input class="form-control" type="number" id="rev-rider-id"
-                   placeholder="Es. 1" min="1" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="rev-customer">Nome Cliente</label>
-            <input class="form-control" type="text" id="rev-customer"
-                   placeholder="Es. Mario Rossi" required>
-          </div>
-          <div class="form-group">
-            <span class="stars-label">Valutazione</span>
-            <div class="stars stars-input" id="stars-input">
-              ${[5,4,3,2,1].map(n => `
-                <input type="radio" name="rating" id="star-${n}" value="${n}">
-                <label for="star-${n}" title="${n} stelle">★</label>
-              `).join('')}
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="rev-comment">Commento (opzionale)</label>
-            <textarea class="form-control" id="rev-comment"
-                      placeholder="Scrivi un commento..."></textarea>
-          </div>
-          <button type="button" class="btn btn-primary" id="btn-submit-review"
-                  onclick="submitReview()" style="width:100%">
-            ✉️ Invia Recensione
-          </button>
-        </form>
-      </div>
-
-      <!-- Aggiorna commento -->
-      <div class="card">
-        <div class="section-header" style="margin-bottom:20px">
-          <div>
-            <div class="section-title">✏️ Aggiorna Commento</div>
-            <div class="section-subtitle">Modifica il commento di una recensione</div>
-          </div>
-        </div>
-
-        <form id="form-update" novalidate>
-          <div class="form-group">
-            <label class="form-label" for="upd-review-id">ID Recensione</label>
-            <input class="form-control" type="number" id="upd-review-id"
-                   placeholder="Es. 3" min="1" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="upd-comment">Nuovo Commento</label>
-            <textarea class="form-control" id="upd-comment"
-                      placeholder="Scrivi il nuovo commento..." required></textarea>
-          </div>
-          <button type="button" class="btn btn-primary" id="btn-submit-update"
-                  onclick="submitUpdateReview()" style="width:100%">
-            💾 Salva Modifiche
-          </button>
-        </form>
-      </div>
-
-    </div>
-  `;
+function openAddReviewModal(riderId, riderName) {
+  const dialog = document.getElementById('dialog-add-review');
+  dialog.querySelector('form').reset();
+  document.getElementById('modal-rev-rider-id').value = riderId;
+  document.getElementById('dialog-review-subtitle').innerHTML = `Stai recensendo il rider <strong>${riderName}</strong> (#${riderId})`;
+  dialog.showModal();
 }
 
-async function submitReview() {
-  const riderId  = parseInt(document.getElementById('rev-rider-id').value);
-  const customer = document.getElementById('rev-customer').value.trim();
-  const rating   = parseInt(document.querySelector('input[name="rating"]:checked')?.value);
-  const comment  = document.getElementById('rev-comment').value.trim() || null;
+async function submitModalReview() {
+  const riderId  = parseInt(document.getElementById('modal-rev-rider-id').value);
+  const customer = document.getElementById('modal-rev-customer').value.trim();
+  const rating   = parseInt(document.querySelector('input[name="modal-rating"]:checked')?.value);
+  const comment  = document.getElementById('modal-rev-comment').value.trim() || null;
 
-  if (!riderId || !customer) { showToast('ID Rider e Nome cliente sono obbligatori', 'error'); return; }
-  if (!rating) { showToast('Seleziona una valutazione (stelle)', 'error'); return; }
 
-  const btn = document.getElementById('btn-submit-review');
+
+  const btn = document.getElementById('btn-submit-modal-review');
   btn.disabled = true; btn.textContent = 'Invio...';
 
   try {
@@ -363,8 +354,12 @@ async function submitReview() {
       method: 'POST',
       body: JSON.stringify({ rider_id: riderId, customer_name: customer, rating, comment }),
     });
-    document.getElementById('form-review').reset();
+    document.getElementById('dialog-add-review').close();
     showToast('Recensione aggiunta con successo!', 'success');
+    if (state.currentSection === 'riders') {
+      const grid = document.getElementById('riders-grid');
+      if (grid) await loadRidersGrid(grid);
+    }
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
@@ -372,28 +367,7 @@ async function submitReview() {
   }
 }
 
-async function submitUpdateReview() {
-  const id      = parseInt(document.getElementById('upd-review-id').value);
-  const comment = document.getElementById('upd-comment').value.trim();
 
-  if (!id || !comment) { showToast('ID recensione e commento sono obbligatori', 'error'); return; }
-
-  const btn = document.getElementById('btn-submit-update');
-  btn.disabled = true; btn.textContent = 'Salvataggio...';
-
-  try {
-    await apiFetch(API.updateReview(), {
-      method: 'POST',
-      body: JSON.stringify({ id, comment }),
-    });
-    document.getElementById('form-update').reset();
-    showToast('Commento aggiornato con successo!', 'success');
-  } catch (err) {
-    showToast(err.message, 'error');
-  } finally {
-    btn.disabled = false; btn.textContent = '💾 Salva Modifiche';
-  }
-}
 
 async function fetchMediaVoti(id, name) {
   try {
